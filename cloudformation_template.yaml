@@ -35,19 +35,7 @@ Resources:
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-      Policies:
-        - PolicyName: PartnerCentralAPIAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: PartnerCentralSellingAPIPermissions
-                Effect: Allow
-                Action:
-                  - 'partnercentral-selling:ListEngagements'
-                  - 'partnercentral-selling:GetEngagement'
-                  - 'partnercentral-selling:ListEngagementInvitations'
-                  - 'partnercentral-selling:GetEngagementInvitation'
-                Resource: '*'
+        - 'arn:aws:iam::aws:policy/AWSPartnerCentralFullAccess'
       Tags:
         - Key: Purpose
           Value: PartnerCentralIntegration
