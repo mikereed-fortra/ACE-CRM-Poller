@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudWatchLogsPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    },
+    {
+      "Sid": "PartnerCentralSellingAPIPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "partnercentral-selling:ListEngagements",
+        "partnercentral-selling:GetEngagement",
+        "partnercentral-selling:ListEngagementInvitations",
+        "partnercentral-selling:GetEngagementInvitation"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
