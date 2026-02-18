@@ -9,7 +9,7 @@ set -e
 STACK_NAME="${STACK_NAME:-partner-central-engagement-processor}"
 CATALOG="${CATALOG:-AWS}"
 LAMBDA_FUNCTION_NAME="${LAMBDA_FUNCTION_NAME:-PartnerCentralEngagementProcessor}"
-EVENT_RULE_NAME="${EVENT_RULE_NAME:-PartnerCentralEngagementInvitationRule}"
+EVENT_RULE_NAME="${EVENT_RULE_NAME:-PartnerCentralBillingEventRule}"
 REGION="us-east-1"
 
 # Colors for output

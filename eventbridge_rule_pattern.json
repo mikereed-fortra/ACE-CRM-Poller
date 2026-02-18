@@ -1,4 +1,3 @@
 {
-  "source": ["aws.partnercentral-selling"],
-  "detail-type": ["Engagement Invitation Created"]
+  "source": ["aws.billing"]
 }

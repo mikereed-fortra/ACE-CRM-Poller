@@ -1,23 +1,41 @@
 {
   "version": "0",
   "id": "12345678-1234-1234-1234-123456789012",
-  "detail-type": "Engagement Invitation Created",
-  "source": "aws.partnercentral-selling",
+  "detail-type": "AWS API Call via CloudTrail",
+  "source": "aws.billing",
   "account": "123456789012",
   "time": "2024-01-15T12:00:00Z",
   "region": "us-east-1",
   "resources": [],
   "detail": {
-    "engagementInvitationId": "inv-abc123xyz456",
-    "engagementId": "eng-def789ghi012",
-    "engagementTitle": "Enterprise Cloud Migration Project",
-    "invitationDate": "2024-01-15T12:00:00Z",
-    "expirationDate": "2024-01-30T12:00:00Z",
-    "status": "PENDING",
-    "senderAwsAccountId": "987654321098",
-    "senderCompanyName": "AWS",
-    "receiverAwsAccountId": "123456789012",
-    "participantType": "RECEIVER",
-    "catalog": "AWS"
+    "eventVersion": "1.08",
+    "userIdentity": {
+      "type": "IAMUser",
+      "principalId": "AIDAI23HXS4EXAMPLE",
+      "arn": "arn:aws:iam::123456789012:user/billing-user",
+      "accountId": "123456789012",
+      "userName": "billing-user"
+    },
+    "eventTime": "2024-01-15T12:00:00Z",
+    "eventSource": "billing.amazonaws.com",
+    "eventName": "GetCostAndUsage",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "192.0.2.1",
+    "userAgent": "aws-cli/2.0.0",
+    "requestParameters": {
+      "timePeriod": {
+        "start": "2024-01-01",
+        "end": "2024-01-15"
+      },
+      "granularity": "DAILY",
+      "metrics": ["UnblendedCost"]
+    },
+    "responseElements": null,
+    "requestID": "abc123def456ghi789",
+    "eventID": "11111111-2222-3333-4444-555555555555",
+    "readOnly": true,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "123456789012"
   }
 }
