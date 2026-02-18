@@ -358,7 +358,7 @@ aws lambda update-function-configuration \
 
 - **ListEngagements**: [Documentation](https://docs.aws.amazon.com/partner-central/latest/APIReference/API_ListEngagements.html)
 - **GetEngagement**: [Documentation](https://docs.aws.amazon.com/partner-central/latest/APIReference/API_GetEngagement.html)
-- **AWS Billing EventBridge Events**: [Documentation](https://docs.aws.amazon.com/eventbridge/latest/ref/events-ref-billing.html)
+- **AWS Billing and EventBridge**: [EventBridge Documentation](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-service-event.html)
 
 ## Security Considerations
 

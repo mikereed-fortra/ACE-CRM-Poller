@@ -186,7 +186,7 @@ def process_engagements(engagements_response, detail_type=None, event_detail=Non
                 logger.info(f"Member Count: {matching_engagement.get('MemberCount')}")
                 logger.info(f"Created At: {matching_engagement.get('CreatedAt')}")
             else:
-                logger.info(f"No engagement found with ID {engagement_id} in current list")
+                logger.warning(f"No engagement found with ID {engagement_id} in current list")
     
     # Log summary information about all engagements
     for engagement in engagement_summaries:
