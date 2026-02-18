@@ -1,13 +1,13 @@
-# AWS Partner Central Engagement Invitation Processor
+# AWS Partner Central API Poller for AWS Billing Events
 
-This solution provides a Lambda function that automatically processes "Engagement Invitation Created" events from AWS Partner Central Selling and calls the ListEngagements API.
+This solution provides a Lambda function that automatically processes AWS Billing events from EventBridge and calls the AWS Partner Central ListEngagements API.
 
 ## Overview
 
-When an AWS sales representative shares an opportunity with a partner, an "Engagement Invitation Created" event is published to EventBridge. This Lambda function:
+When any AWS Billing event occurs and is published to EventBridge, this Lambda function:
 
 1. Receives the event notification via EventBridge
-2. Extracts the engagement invitation details
+2. Extracts the billing event details
 3. Calls the AWS Partner Central `ListEngagements` API
 4. Processes the engagement data (with customizable business logic)
 
@@ -15,14 +15,14 @@ When an AWS sales representative shares an opportunity with a partner, an "Engag
 
 ```
 EventBridge Event → EventBridge Rule → Lambda Function → Partner Central API
-(Engagement           (Pattern Match)    (Process Event)   (ListEngagements)
-Invitation Created)
+(AWS Billing           (Pattern Match)    (Process Event)   (ListEngagements)
+ Events)
 ```
 
 ## Components
 
-- **Lambda Function**: Processes events and calls Partner Central API
-- **EventBridge Rule**: Filters and routes Partner Central events to Lambda
+- **Lambda Function**: Processes AWS Billing events and calls Partner Central API
+- **EventBridge Rule**: Filters and routes AWS Billing events to Lambda
 - **IAM Role**: Provides necessary permissions to Lambda
 - **CloudWatch Logs**: Stores Lambda execution logs
 
@@ -51,7 +51,7 @@ aws cloudformation create-stack \
 **Parameters:**
 - `Catalog`: Choose `AWS` for production or `Sandbox` for testing (default: AWS)
 - `LambdaFunctionName`: Name for the Lambda function (default: PartnerCentralEngagementProcessor)
-- `EventBridgeRuleName`: Name for the EventBridge rule (default: PartnerCentralEngagementInvitationRule)
+- `EventBridgeRuleName`: Name for the EventBridge rule (default: PartnerCentralBillingEventRule)
 
 **Monitor deployment:**
 ```bash
@@ -129,10 +129,10 @@ aws lambda create-function \
 ```bash
 # Create the EventBridge rule
 aws events put-rule \
-  --name PartnerCentralEngagementInvitationRule \
+  --name PartnerCentralBillingEventRule \
   --event-pattern file://eventbridge_rule_pattern.json \
   --state ENABLED \
-  --description "Triggers Lambda when Engagement Invitation Created event is received" \
+  --description "Triggers Lambda when AWS Billing events are received" \
   --region us-east-1
 
 # Get Lambda function ARN
@@ -140,7 +140,7 @@ LAMBDA_ARN=$(aws lambda get-function --function-name PartnerCentralEngagementPro
 
 # Add Lambda as target
 aws events put-targets \
-  --rule PartnerCentralEngagementInvitationRule \
+  --rule PartnerCentralBillingEventRule \
   --targets "Id"="1","Arn"="$LAMBDA_ARN" \
   --region us-east-1
 
@@ -150,7 +150,7 @@ aws lambda add-permission \
   --statement-id AllowEventBridgeInvoke \
   --action lambda:InvokeFunction \
   --principal events.amazonaws.com \
-  --source-arn $(aws events describe-rule --name PartnerCentralEngagementInvitationRule --region us-east-1 --query 'Arn' --output text) \
+  --source-arn $(aws events describe-rule --name PartnerCentralBillingEventRule --region us-east-1 --query 'Arn' --output text) \
   --region us-east-1
 ```
 
@@ -164,17 +164,42 @@ Create a test event file `test_event.json`:
 {
   "version": "0",
   "id": "12345678-1234-1234-1234-123456789012",
-  "detail-type": "Engagement Invitation Created",
-  "source": "aws.partnercentral-selling",
+  "detail-type": "AWS API Call via CloudTrail",
+  "source": "aws.billing",
   "account": "123456789012",
   "time": "2024-01-15T12:00:00Z",
   "region": "us-east-1",
   "resources": [],
   "detail": {
-    "engagementInvitationId": "inv-abc123xyz",
-    "engagementId": "eng-123456789012",
-    "invitationDate": "2024-01-15T12:00:00Z",
-    "status": "PENDING"
+    "eventVersion": "1.08",
+    "userIdentity": {
+      "type": "IAMUser",
+      "principalId": "AIDAI23HXS4EXAMPLE",
+      "arn": "arn:aws:iam::123456789012:user/billing-user",
+      "accountId": "123456789012",
+      "userName": "billing-user"
+    },
+    "eventTime": "2024-01-15T12:00:00Z",
+    "eventSource": "billing.amazonaws.com",
+    "eventName": "GetCostAndUsage",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "192.0.2.1",
+    "userAgent": "aws-cli/2.0.0",
+    "requestParameters": {
+      "timePeriod": {
+        "start": "2024-01-01",
+        "end": "2024-01-15"
+      },
+      "granularity": "DAILY",
+      "metrics": ["UnblendedCost"]
+    },
+    "responseElements": null,
+    "requestID": "abc123def456ghi789",
+    "eventID": "11111111-2222-3333-4444-555555555555",
+    "readOnly": true,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "123456789012"
   }
 }
 ```
@@ -235,9 +260,9 @@ for engagement in engagement_summaries:
 ```python
 sns = boto3.client('sns')
 sns.publish(
-    TopicArn='arn:aws:sns:us-east-1:123456789012:EngagementNotifications',
-    Subject='New Engagement Invitation',
-    Message=f"New engagement invitation received: {engagement_invitation_id}"
+    TopicArn='arn:aws:sns:us-east-1:123456789012:BillingNotifications',
+    Subject='New AWS Billing Event',
+    Message=f"New billing event received: {detail_type}"
 )
 ```
 
@@ -248,7 +273,7 @@ import requests
 crm_api_url = os.environ.get('CRM_API_URL')
 requests.post(
     f"{crm_api_url}/engagements",
-    json=matching_engagement,
+    json={'billing_event': detail_type, 'engagements': engagement_summaries},
     headers={'Authorization': f'Bearer {api_token}'}
 )
 ```
@@ -309,8 +334,9 @@ aws cloudwatch put-metric-alarm \
 
 2. **No events received:**
    - Verify EventBridge rule is enabled
-   - Check event pattern matches the source and detail-type
+   - Check event pattern matches the aws.billing source
    - Confirm Lambda has permission to be invoked by EventBridge
+   - Ensure CloudTrail is configured to capture billing events
 
 3. **Timeout errors:**
    - Increase Lambda timeout (currently set to 300 seconds)
@@ -332,7 +358,7 @@ aws lambda update-function-configuration \
 
 - **ListEngagements**: [Documentation](https://docs.aws.amazon.com/partner-central/latest/APIReference/API_ListEngagements.html)
 - **GetEngagement**: [Documentation](https://docs.aws.amazon.com/partner-central/latest/APIReference/API_GetEngagement.html)
-- **EventBridge Events**: [Documentation](https://docs.aws.amazon.com/eventbridge/latest/ref/events-ref-partnercentral-selling.html)
+- **AWS Billing EventBridge Events**: [Documentation](https://docs.aws.amazon.com/eventbridge/latest/ref/events-ref-billing.html)
 
 ## Security Considerations
 
@@ -368,12 +394,12 @@ aws lambda delete-function \
 
 # Delete EventBridge rule
 aws events remove-targets \
-  --rule PartnerCentralEngagementInvitationRule \
+  --rule PartnerCentralBillingEventRule \
   --ids 1 \
   --region us-east-1
 
 aws events delete-rule \
-  --name PartnerCentralEngagementInvitationRule \
+  --name PartnerCentralBillingEventRule \
   --region us-east-1
 
 # Delete IAM role and policies
