@@ -14,13 +14,13 @@ partner_central_client = boto3.client('partnercentral-selling', region_name='us-
 
 def lambda_handler(event, context):
     """
-    Lambda function handler for processing Engagement Invitation Created events.
+    Lambda function handler for processing AWS Billing events.
     
-    This function is triggered by EventBridge when an "Engagement Invitation Created" 
-    event is received from aws.partnercentral-selling.
+    This function is triggered by EventBridge when any event is received 
+    from aws.billing source.
     
     Args:
-        event: EventBridge event containing the engagement invitation details
+        event: EventBridge event containing the billing event details
         context: Lambda context object
         
     Returns:
@@ -35,25 +35,17 @@ def lambda_handler(event, context):
         detail_type = event.get('detail-type')
         detail = event.get('detail', {})
         
-        # Validate event source and type
-        if source != 'aws.partnercentral-selling':
-            logger.warning(f"Unexpected event source: {source}")
+        # Validate event source - must be from AWS Billing
+        if source != 'aws.billing':
+            logger.warning(f"Unexpected event source: {source}. Expected 'aws.billing'")
             return {
                 'statusCode': 400,
-                'body': json.dumps({'message': 'Invalid event source'})
+                'body': json.dumps({'message': 'Invalid event source. Expected aws.billing'})
             }
         
-        if detail_type != 'Engagement Invitation Created':
-            logger.warning(f"Unexpected event type: {detail_type}")
-            return {
-                'statusCode': 400,
-                'body': json.dumps({'message': 'Invalid event detail-type'})
-            }
-        
-        # Log the invitation details
-        engagement_invitation_id = detail.get('engagementInvitationId')
-        engagement_id = detail.get('engagementId')
-        logger.info(f"Processing Engagement Invitation Created: InvitationId={engagement_invitation_id}, EngagementId={engagement_id}")
+        # Log the event details (generic for any billing event type)
+        logger.info(f"Processing AWS Billing event: DetailType={detail_type}, Source={source}")
+        logger.info(f"Event detail: {json.dumps(detail)}")
         
         # Get the catalog from environment variable or default to 'AWS'
         catalog = os.environ.get('CATALOG', 'AWS')
@@ -66,15 +58,15 @@ def lambda_handler(event, context):
         engagement_count = len(engagements_response.get('EngagementSummaryList', []))
         logger.info(f"Successfully retrieved {engagement_count} engagements")
         
-        # Process the engagements (you can add custom logic here)
-        process_engagements(engagements_response, engagement_id)
+        # Process the engagements with the billing event details
+        process_engagements(engagements_response, detail_type, detail)
         
         return {
             'statusCode': 200,
             'body': json.dumps({
-                'message': 'Successfully processed Engagement Invitation Created event',
-                'engagementInvitationId': engagement_invitation_id,
-                'engagementId': engagement_id,
+                'message': 'Successfully processed AWS Billing event',
+                'source': source,
+                'detailType': detail_type,
                 'engagementsRetrieved': engagement_count
             })
         }
@@ -152,41 +144,49 @@ def list_engagements(catalog, max_results=100):
         raise
 
 
-def process_engagements(engagements_response, related_engagement_id=None):
+def process_engagements(engagements_response, detail_type=None, event_detail=None):
     """
     Process the retrieved engagements.
     
     This is a placeholder for custom business logic. You can:
     - Filter engagements based on criteria
-    - Find the specific engagement related to the invitation
+    - Correlate billing events with engagements
     - Store engagement data in a database
     - Send notifications
     - Update external systems
     
     Args:
         engagements_response: Response from ListEngagements API
-        related_engagement_id: The engagement ID from the event (optional)
+        detail_type: The detail-type of the billing event (optional)
+        event_detail: The detail payload of the billing event (optional)
     """
     
     engagement_summaries = engagements_response.get('EngagementSummaryList', [])
     
     logger.info(f"Processing {len(engagement_summaries)} engagements")
+    logger.info(f"Triggered by billing event: {detail_type}")
     
-    # Find the engagement related to this invitation if engagement_id was provided
-    if related_engagement_id:
-        matching_engagement = None
-        for engagement in engagement_summaries:
-            if engagement.get('Id') == related_engagement_id:
-                matching_engagement = engagement
-                break
+    # Log information about the billing event that triggered this
+    if event_detail:
+        logger.info(f"Billing event details: {json.dumps(event_detail)}")
         
-        if matching_engagement:
-            logger.info(f"Found matching engagement: {json.dumps(matching_engagement)}")
-            logger.info(f"Engagement Title: {matching_engagement.get('Title')}")
-            logger.info(f"Member Count: {matching_engagement.get('MemberCount')}")
-            logger.info(f"Created At: {matching_engagement.get('CreatedAt')}")
-        else:
-            logger.warning(f"Engagement {related_engagement_id} not found in list")
+        # Check if this is an engagement-related billing event
+        engagement_id = event_detail.get('engagementId')
+        if engagement_id:
+            # Find the engagement related to this billing event
+            matching_engagement = None
+            for engagement in engagement_summaries:
+                if engagement.get('Id') == engagement_id:
+                    matching_engagement = engagement
+                    break
+            
+            if matching_engagement:
+                logger.info(f"Found matching engagement: {json.dumps(matching_engagement)}")
+                logger.info(f"Engagement Title: {matching_engagement.get('Title')}")
+                logger.info(f"Member Count: {matching_engagement.get('MemberCount')}")
+                logger.info(f"Created At: {matching_engagement.get('CreatedAt')}")
+            else:
+                logger.warning(f"No engagement found with ID {engagement_id} in current list")
     
     # Log summary information about all engagements
     for engagement in engagement_summaries:
@@ -198,5 +198,6 @@ def process_engagements(engagements_response, related_engagement_id=None):
     # - Send SNS notifications
     # - Update a CRM system
     # - Trigger additional workflows
+    # - Correlate billing events with partner engagements
     
     return True
